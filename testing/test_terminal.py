@@ -86,6 +86,40 @@ def test_plugin_nameversion(input, expected):
 
 
 class TestTerminal:
+    @pytest.mark.parametrize(
+        "options", [[], ["-vv", "-rA", "--durations=0", "--durations-min=0"]]
+    )
+    def test_successful_phase_reports_in_stats(
+        self, pytester: Pytester, options
+    ) -> None:
+        pytester.makepyfile("def test_example(): pass")
+        pytester.makeconftest(
+            """
+            seen = []
+
+            def pytest_runtest_logreport(report):
+                seen.append(report)
+
+            def pytest_terminal_summary(terminalreporter):
+                phases = terminalreporter.stats[""]
+                assert [report.when for report in phases] == ["setup", "teardown"]
+                assert phases[0] is seen[0]
+                assert phases[1] is seen[2]
+                assert terminalreporter.stats["passed"][0] is seen[1]
+            """
+        )
+        result = pytester.runpytest(*options)
+        result.assert_outcomes(passed=1)
+        assert result.ret == 0
+        if options:
+            result.stdout.fnmatch_lines_random(
+                [
+                    "*setup*test_example*",
+                    "*call*test_example*",
+                    "*teardown*test_example*",
+                ],
+            )
+
     def test_pass_skip_fail(self, pytester: Pytester, option) -> None:
         pytester.makepyfile(
             """

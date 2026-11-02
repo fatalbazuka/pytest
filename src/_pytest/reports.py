@@ -402,7 +402,9 @@ class TestReport(BaseReport):
         #: The system time when the call ended, in seconds since the epoch.
         self.stop: float = stop
 
-        self.__dict__.update(extra)
+        # Avoid materializing the instance dictionary for the common case.
+        if extra:
+            self.__dict__.update(extra)
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.nodeid!r} when={self.when!r} outcome={self.outcome!r}>"

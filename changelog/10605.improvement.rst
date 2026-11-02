@@ -1,0 +1,1 @@
+Reduced memory usage of test reports on CPython by avoiding an unnecessary instance dictionary allocation when no extra attributes are provided.

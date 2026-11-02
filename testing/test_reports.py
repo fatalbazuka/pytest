@@ -13,6 +13,39 @@ from _pytest.reports import TestReport
 import pytest
 
 
+@pytest.mark.parametrize("when", ["setup", "call", "teardown"])
+@pytest.mark.parametrize("extra", [{}, {"custom": ["value"], "wasxfail": "reason"}])
+def test_testreport_extra_attributes(when, extra) -> None:
+    report = TestReport(
+        "test_example.py::test_example",
+        ("test_example.py", 0, "test_example"),
+        {"test_example": 1},
+        "passed",
+        None,
+        when,
+        **extra,
+    )
+    assert report.passed
+    assert report.when == when
+    assert report.sections == []
+    assert report.user_properties == []
+    for name, value in extra.items():
+        assert getattr(report, name) is value
+
+    # Plugins can still add attributes and access the live instance dictionary.
+    report.plugin_attribute = "added later"  # type: ignore[attr-defined]
+    assert report.__dict__["plugin_attribute"] == "added later"
+    report.__dict__["plugin_attribute"] = "changed"
+    assert report.plugin_attribute == "changed"
+
+    restored = TestReport._from_json(report._to_json())
+    assert restored.nodeid == report.nodeid
+    assert restored.when == when
+    assert restored.plugin_attribute == "changed"
+    for name, value in extra.items():
+        assert getattr(restored, name) == value
+
+
 class TestReportSerialization:
     def test_xdist_longrepr_to_str_issue_241(self, pytester: Pytester) -> None:
         """Regarding issue pytest-xdist#241.
